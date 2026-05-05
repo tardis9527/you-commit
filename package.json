@@ -1,0 +1,323 @@
+{
+  "name": "you-commit",
+  "displayName": "YouCommit - AI Commit",
+  "description": "AI-powered git commit message generator. BYOK, multi-format, customizable. 自带 AI 模型，一键生成规范的 Git Commit Message。",
+  "version": "0.2.8",
+  "publisher": "tardis9527",
+  "license": "MIT",
+  "icon": "resources/logo/youcommit-logo.png",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "commit",
+    "ai",
+    "conventional-commits",
+    "gitmoji",
+    "source-control",
+    "youcommit",
+    "commit message"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "youcommit.generateMessage",
+        "title": "AI生成Commit",
+        "category": "YouCommit",
+        "icon": {
+          "light": "resources/icons/youcommit-generate-light.svg",
+          "dark": "resources/icons/youcommit-generate-dark.svg"
+        }
+      },
+      {
+        "command": "youcommit.openSettings",
+        "title": "YouCommit: 打开设置",
+        "category": "YouCommit",
+        "icon": {
+          "light": "resources/icons/youcommit-settings-light.svg",
+          "dark": "resources/icons/youcommit-settings-dark.svg"
+        }
+      },
+      {
+        "command": "youcommit.configureProvider",
+        "title": "YouCommit: 配置 AI 模型",
+        "category": "YouCommit"
+      },
+      {
+        "command": "youcommit.setApiKey",
+        "title": "YouCommit: 设置 API Key",
+        "category": "YouCommit"
+      },
+      {
+        "command": "youcommit.buyQuota",
+        "title": "YouCommit: 购买额度",
+        "category": "YouCommit"
+      },
+      {
+        "command": "youcommit.inputServiceKey",
+        "title": "YouCommit: 输入服务密钥",
+        "category": "YouCommit"
+      },
+      {
+        "command": "youcommit.queryQuota",
+        "title": "YouCommit: 查询剩余次数",
+        "category": "YouCommit"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "youcommit.generateMessage",
+          "group": "navigation@-2",
+          "when": "scmProvider == git"
+        },
+        {
+          "command": "youcommit.openSettings",
+          "group": "navigation@-1",
+          "when": "scmProvider == git"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "youcommit.generateMessage",
+        "key": "ctrl+shift+g ctrl+shift+a",
+        "mac": "cmd+shift+g cmd+shift+a"
+      }
+    ],
+    "configuration": {
+      "title": "YouCommit",
+      "properties": {
+        "youcommit.serviceMode": {
+          "type": "string",
+          "enum": [
+            "byok",
+            "builtin"
+          ],
+          "default": "byok",
+          "enumItemLabels": [
+            "AI模型渠道（自带密钥）",
+            "内置服务"
+          ],
+          "enumDescriptions": [
+            "AI模型渠道 — 自带 API Key，直连 AI 平台",
+            "内置服务 — 使用 YouCommit 提供的 AI 服务，购买密钥即可使用"
+          ],
+          "markdownDescription": "服务模式\n\n内置服务操作：[\ud83d\udcca 查询剩余次数](command:youcommit.queryQuota) \uff5c [\ud83d\udd11 输入密钥](command:youcommit.inputServiceKey) \uff5c [\ud83d\uded2 购买额度](command:youcommit.buyQuota)",
+          "order": 0
+        },
+        "youcommit.builtinServiceUrl": {
+          "type": "string",
+          "default": "https://youcommit.ai-you.top",
+          "description": "内置服务 API 地址（一般无需修改）",
+          "order": 0
+        },
+        "youcommit.provider.baseUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "AI API Base URL（AI模型渠道模式）\n\n[🔑 更换 API Key](command:youcommit.setApiKey) ｜ [⚙️ 重新配置](command:youcommit.configureProvider)",
+          "order": 1
+        },
+        "youcommit.provider.model": {
+          "type": "string",
+          "default": "",
+          "description": "AI 模型名称",
+          "order": 2
+        },
+        "youcommit.commitFormat": {
+          "type": "string",
+          "enum": [
+            "conventional",
+            "gitmoji",
+            "simple",
+            "detailed",
+            "custom"
+          ],
+          "default": "conventional",
+          "enumItemLabels": [
+            "约定式提交（Conventional）",
+            "Gitmoji 表情",
+            "简洁模式",
+            "详细模式",
+            "自定义模板"
+          ],
+          "enumDescriptions": [
+            "Conventional Commits (feat/fix/chore...)",
+            "Gitmoji (✨/🐛/🔥...)",
+            "简洁模式（一行描述）",
+            "详细模式（标题 + 详细列表）",
+            "自定义 Prompt 模板"
+          ],
+          "description": "Commit message 格式规范",
+          "order": 3
+        },
+        "youcommit.contentRule": {
+          "type": "string",
+          "enum": [
+            "standard",
+            "brief",
+            "verbose",
+            "custom"
+          ],
+          "default": "standard",
+          "enumItemLabels": [
+            "标准",
+            "精简",
+            "详尽",
+            "自定义"
+          ],
+          "enumDescriptions": [
+            "标准模式：平衡描述",
+            "精简模式：一行核心描述",
+            "详尽模式：逐文件列举",
+            "自定义规则"
+          ],
+          "description": "内容生成规则",
+          "order": 4
+        },
+        "youcommit.language": {
+          "type": "string",
+          "enum": [
+            "zh-CN",
+            "en-US"
+          ],
+          "default": "zh-CN",
+          "enumItemLabels": [
+            "中文",
+            "English"
+          ],
+          "enumDescriptions": [
+            "中文",
+            "English"
+          ],
+          "description": "生成消息的语言",
+          "order": 5
+        },
+        "youcommit.customPromptPath": {
+          "type": "string",
+          "default": "",
+          "description": "自定义 Prompt 模板文件路径（支持 .md 或 .txt）",
+          "order": 6
+        },
+        "youcommit.autoCommit": {
+          "type": "boolean",
+          "default": false,
+          "description": "生成后自动执行 git commit",
+          "order": 7
+        },
+        "youcommit.autoPush": {
+          "type": "boolean",
+          "default": false,
+          "description": "自动 commit 后自动执行 git push（需先启用 autoCommit）",
+          "order": 8
+        },
+        "youcommit.streaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用流式输出（逐字填入输入框）",
+          "order": 9
+        },
+        "youcommit.temperature": {
+          "type": "number",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "AI 生成温度（越低越确定，推荐 0.2-0.5）",
+          "order": 10
+        },
+        "youcommit.maxDiffLength": {
+          "type": "number",
+          "default": 8000,
+          "minimum": 1000,
+          "maximum": 100000,
+          "description": "最大 diff 字符数（超出将智能截断）",
+          "order": 11
+        }
+      }
+    },
+    "walkthroughs": [
+      {
+        "id": "youcommit.setup",
+        "title": "YouCommit - 快速开始",
+        "description": "只需几步，即可使用 AI 自动生成规范的 Commit Message。",
+        "steps": [
+          {
+            "id": "youcommit.setup.configureProvider",
+            "title": "配置 AI 模型",
+            "description": "选择「⚡ 内置服务」购买密钥即用，或自带 API Key 接入 OpenAI、DeepSeek 等平台。\n[立即配置](command:youcommit.configureProvider)",
+            "media": {
+              "markdown": "resources/walkthrough/configure.md"
+            },
+            "completionEvents": [
+              "onSettingChanged:youcommit.provider.baseUrl",
+              "onSettingChanged:youcommit.serviceMode"
+            ]
+          },
+          {
+            "id": "youcommit.setup.generate",
+            "title": "生成 Commit Message",
+            "description": "暂存你的代码改动，然后点击源代码管理输入框旁的 YouCommit 图标，或使用快捷键 Ctrl+Shift+G Ctrl+Shift+A。\n[生成 Commit Message](command:youcommit.generateMessage)",
+            "media": {
+              "markdown": "resources/walkthrough/generate.md"
+            },
+            "completionEvents": [
+              "onCommand:youcommit.generateMessage"
+            ]
+          },
+          {
+            "id": "youcommit.setup.customize",
+            "title": "个性化设置",
+            "description": "自定义 commit 格式、语言、内容规则等选项。\n[打开设置](command:youcommit.openSettings)",
+            "media": {
+              "markdown": "resources/walkthrough/customize.md"
+            },
+            "completionEvents": [
+              "onCommand:youcommit.openSettings"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run ext:package",
+    "ext:compile": "node esbuild.mjs",
+    "ext:watch": "node esbuild.mjs --watch",
+    "ext:package": "node esbuild.mjs --production",
+    "ext:publish": "vsce publish",
+    "server:install": "yarn --cwd server install",
+    "server:dev": "yarn --cwd server start:dev",
+    "server:build": "yarn --cwd server build",
+    "server:start": "yarn --cwd server start:prod",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.14.0",
+    "prettier": "^3.4.0",
+    "sharp": "^0.34.5",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

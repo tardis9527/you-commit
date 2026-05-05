@@ -1,0 +1,17 @@
+.vscode/**
+src/**
+test/**
+node_modules/**
+doc/**
+server/**
+scripts/**
+.eslintrc.json
+.prettierrc
+.env
+.env.example
+tsconfig.json
+esbuild.mjs
+docker-compose.yml
+**/*.map
+**/*.ts
+.gitignore

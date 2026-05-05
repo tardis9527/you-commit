@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "watch",
+      "type": "shell",
+      "command": "yarn run watch",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^\\[ERROR\\].*",
+          "severity": 1,
+          "message": 0
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[YouCommit\\]",
+          "endsPattern": "^\\[YouCommit\\] Watching"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

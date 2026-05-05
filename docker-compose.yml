@@ -1,0 +1,8 @@
+services:
+  api:
+    build: ./server
+    ports:
+      - "${SERVER_PORT:-19728}:19728"
+    env_file:
+      - .env
+    restart: unless-stopped
