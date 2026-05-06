@@ -10,6 +10,7 @@ interface GitApi {
 }
 
 interface GitRepository {
+  rootUri: vscode.Uri;
   inputBox: { value: string };
   state: {
     HEAD: { name?: string } | undefined;
@@ -21,6 +22,12 @@ interface GitRepository {
 }
 
 export class GitService {
+  private sourceControlRootUri?: vscode.Uri;
+
+  constructor(sourceControl?: vscode.SourceControl) {
+    this.sourceControlRootUri = sourceControl?.rootUri;
+  }
+
   private getGitApi(): GitApi {
     const gitExtension = vscode.extensions.getExtension<GitExtensionApi>('vscode.git');
     if (!gitExtension) {
@@ -37,6 +44,18 @@ export class GitService {
     if (!api.repositories.length) {
       throw new Error('当前工作区没有 Git 仓库。');
     }
+
+    if (this.sourceControlRootUri) {
+      const targetPath = this.sourceControlRootUri.fsPath;
+      const matched = api.repositories.find(
+        (repo) => repo.rootUri.fsPath === targetPath,
+      );
+      if (matched) {
+        return matched;
+      }
+      log(`Warning: No repo matched rootUri ${targetPath}, falling back to first repo.`);
+    }
+
     return api.repositories[0];
   }
 

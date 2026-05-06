@@ -126,11 +126,7 @@
 
 ## 参与贡献
 
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feat/xxx`)
-3. 提交代码 (`git commit -m 'feat: add xxx'`)
-4. 推送分支 (`git push origin feat/xxx`)
-5. 新建 Pull Request
+欢迎贡献代码！本地开发环境搭建、调试方式及提交流程请参阅 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ## 开源协议
 

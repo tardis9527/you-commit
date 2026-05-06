@@ -20,6 +20,7 @@ let isGenerating = false;
 export async function generateMessage(
   configManager: ConfigManager,
   secretManager: SecretManager,
+  sourceControl?: vscode.SourceControl,
 ): Promise<void> {
   if (isGenerating) {
     vscode.window.showWarningMessage('YouCommit: 正在生成中，请稍候...');
@@ -58,7 +59,7 @@ export async function generateMessage(
     }
   }
 
-  const gitService = new GitService();
+  const gitService = new GitService(sourceControl);
   const streamProvider: StreamProvider = isBuiltin
     ? new BuiltinService(configManager, secretManager)
     : new AiService(configManager, secretManager);

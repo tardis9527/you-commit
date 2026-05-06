@@ -20,8 +20,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(statusBarItem);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('youcommit.generateMessage', () =>
-      generateMessage(configManager, secretManager),
+    vscode.commands.registerCommand('youcommit.generateMessage', (sourceControl?: vscode.SourceControl) =>
+      generateMessage(configManager, secretManager, sourceControl),
     ),
 
     vscode.commands.registerCommand('youcommit.openSettings', () => openSettings()),
