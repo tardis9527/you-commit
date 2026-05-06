@@ -2,7 +2,7 @@
   "name": "you-commit",
   "displayName": "YouCommit - AI Commit",
   "description": "AI-powered git commit message generator. BYOK, multi-format, customizable. 自带 AI 模型，一键生成规范的 Git Commit Message。",
-  "version": "0.2.8",
+  "version": "0.2.10",
   "publisher": "tardis9527",
   "license": "MIT",
   "icon": "resources/logo/youcommit-logo.png",
