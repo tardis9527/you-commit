@@ -8,7 +8,7 @@
   "icon": "resources/logo/youcommit-logo.png",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/tardis9527/you-commit.git"
   },
   "engines": {
     "vscode": "^1.85.0"
