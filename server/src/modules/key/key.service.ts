@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Key } from './key.entity';
@@ -10,66 +10,66 @@ export class KeyService {
     private readonly keyRepo: Repository<Key>,
   ) {}
 
-  async activate(keyStr: string, machineId: string): Promise<{ remaining: number; total: number }> {
-    const key = await this.keyRepo.findOne({ where: { key: keyStr } });
-    if (!key) {
-      throw new NotFoundException('密钥无效');
-    }
+  async activate(keyStr: string, _machineId: string): Promise<{ remaining: number; total: number }> {
+    const key = await this.findKeyOrThrow(keyStr);
 
-    if (key.machineId && key.machineId !== machineId) {
-      throw new ForbiddenException('该密钥已绑定其他设备');
-    }
-
-    if (!key.machineId) {
-      key.machineId = machineId;
+    if (!key.activatedAt) {
       key.activatedAt = new Date();
       await this.keyRepo.save(key);
     }
 
-    return { remaining: key.total - key.used, total: key.total };
+    return this.toQuota(key);
   }
 
-  async getQuota(keyStr: string, machineId: string): Promise<{ remaining: number; total: number }> {
-    // Aggregate all keys bound to this machine
-    const keys = await this.keyRepo.find({ where: { machineId } });
-    if (keys.length === 0) {
-      throw new NotFoundException('该设备没有绑定任何密钥');
-    }
-
-    let total = 0;
-    let used = 0;
-    for (const k of keys) {
-      total += k.total;
-      used += k.used;
-    }
-
-    return { remaining: total - used, total };
+  async getQuota(keyStr: string, _machineId: string): Promise<{ remaining: number; total: number }> {
+    const key = await this.findKeyOrThrow(keyStr);
+    return this.toQuota(key);
   }
 
-  async consumeOne(machineId: string): Promise<void> {
-    // Find the oldest key with remaining quota for this machine
+  async consumeOne(keyStr: string): Promise<void> {
+    const result = await this.keyRepo
+      .createQueryBuilder()
+      .update(Key)
+      .set({ used: () => '"used" + 1' })
+      .where('"key" = :keyStr', { keyStr })
+      .andWhere('"used" < "total"')
+      .execute();
+
+    if (!result.affected) {
+      const key = await this.keyRepo.findOne({ where: { key: keyStr } });
+      if (!key) {
+        throw new NotFoundException('Invalid service key');
+      }
+      throw new BadRequestException('Quota exhausted, please purchase a new key');
+    }
+  }
+
+  async ensureHasQuota(keyStr: string): Promise<void> {
+    const key = await this.findKeyOrThrow(keyStr);
+    if (key.used >= key.total) {
+      throw new BadRequestException('Quota exhausted, please purchase a new key');
+    }
+  }
+
+  async hasQuota(keyStr: string): Promise<boolean> {
     const key = await this.keyRepo
       .createQueryBuilder('k')
-      .where('k.machine_id = :machineId', { machineId })
-      .andWhere('k.used < k.total')
-      .orderBy('k.activated_at', 'ASC')
-      .getOne();
-
-    if (!key) {
-      throw new BadRequestException('额度已用完，请购买新密钥');
-    }
-
-    key.used += 1;
-    await this.keyRepo.save(key);
-  }
-
-  async hasQuota(machineId: string): Promise<boolean> {
-    const key = await this.keyRepo
-      .createQueryBuilder('k')
-      .where('k.machine_id = :machineId', { machineId })
+      .where('k.key = :keyStr', { keyStr })
       .andWhere('k.used < k.total')
       .getOne();
 
     return !!key;
+  }
+
+  private async findKeyOrThrow(keyStr: string): Promise<Key> {
+    const key = await this.keyRepo.findOne({ where: { key: keyStr } });
+    if (!key) {
+      throw new NotFoundException('Invalid service key');
+    }
+    return key;
+  }
+
+  private toQuota(key: Key): { remaining: number; total: number } {
+    return { remaining: Math.max(key.total - key.used, 0), total: key.total };
   }
 }

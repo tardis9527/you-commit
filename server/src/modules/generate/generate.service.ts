@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Response } from 'express';
 import { KeyService } from '../key/key.service';
 import { ChannelService } from '../channel/channel.service';
@@ -17,16 +17,11 @@ export class GenerateService {
     userPrompt: string,
     res: Response,
   ): Promise<void> {
-    // Validate key and quota
-    const hasQuota = await this.keyService.hasQuota(machineId);
-    if (!hasQuota) {
-      throw new BadRequestException('额度已用完，请购买新密钥');
-    }
+    // machineId is kept for API compatibility; quota is now limited by key only.
+    await this.keyService.ensureHasQuota(key);
 
-    // Get active AI channel
     const channel = await this.channelService.getActiveChannel();
 
-    // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -55,21 +50,19 @@ export class GenerateService {
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => '');
-        res.write(`data: ${JSON.stringify({ error: `AI 服务错误 (${response.status}): ${errorBody.slice(0, 200)}` })}\n\n`);
+        res.write(`data: ${JSON.stringify({ error: `AI service error (${response.status}): ${errorBody.slice(0, 200)}` })}\n\n`);
         res.end();
         return;
       }
 
       if (!response.body) {
-        res.write(`data: ${JSON.stringify({ error: 'AI 响应体为空' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ error: 'AI response body is empty' })}\n\n`);
         res.end();
         return;
       }
 
-      // Consume one quota
-      await this.keyService.consumeOne(machineId);
+      await this.keyService.consumeOne(key);
 
-      // Pipe SSE stream
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -88,7 +81,6 @@ export class GenerateService {
 
           const data = trimmed.slice(6);
           if (data === '[DONE]') {
-            // Query remaining quota
             const quota = await this.keyService.getQuota(key, machineId);
             res.write(`data: ${JSON.stringify({ done: true, remaining: quota.remaining })}\n\n`);
             res.end();
@@ -108,7 +100,6 @@ export class GenerateService {
         }
       }
 
-      // If stream ended without [DONE]
       const quota = await this.keyService.getQuota(key, machineId);
       res.write(`data: ${JSON.stringify({ done: true, remaining: quota.remaining })}\n\n`);
       res.end();
