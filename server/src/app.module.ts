@@ -18,7 +18,9 @@ import { ChannelModule } from './modules/channel/channel.module';
         type: 'postgres' as const,
         url: config.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize:
+          config.get<string>('DB_SYNCHRONIZE', 'false').toLowerCase() ===
+          'true',
       }),
     }),
     KeyModule,
