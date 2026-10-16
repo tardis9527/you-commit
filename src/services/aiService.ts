@@ -90,9 +90,61 @@ export class AiService {
     callback: StreamCallback,
   ): Promise<void> {
     let fullText = '';
+    let callbackSent = false;
     const reader = body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+
+    const handleData = (data: string): boolean => {
+      if (data === '[DONE]') {
+        if (!callbackSent) {
+          callbackSent = true;
+          if (fullText.length === 0) {
+            callback.onError(new AiError('AI 返回了空内容', 'EMPTY_RESPONSE'));
+          } else {
+            callback.onComplete(fullText);
+          }
+        }
+        return true;
+      }
+
+      try {
+        const parsed = JSON.parse(data) as {
+          error?: string | { message?: string };
+          choices?: Array<{
+            delta?: { content?: string | null };
+            text?: string | null;
+          }>;
+        };
+
+        if (parsed.error) {
+          callbackSent = true;
+          const message =
+            typeof parsed.error === 'string' ? parsed.error : parsed.error.message || 'AI 服务返回错误';
+          callback.onError(new AiError(message, 'UNKNOWN'));
+          return true;
+        }
+
+        // 兼容 OpenAI Chat Completions 的 delta.content 和部分兼容接口的 choices[].text。
+        const choice = parsed.choices?.[0];
+        const token = choice?.delta?.content || choice?.text || '';
+        if (token) {
+          fullText += token;
+          callback.onToken(token);
+        }
+      } catch {
+        // SSE 可能把一条 JSON 拆到多个 chunk；未能解析的行交由后续 chunk 拼接。
+      }
+      return false;
+    };
+
+    const handleLine = (line: string): boolean => {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data:')) {
+        return false;
+      }
+      return handleData(trimmed.slice(5).trimStart());
+    };
 
     try {
       while (true) {
@@ -106,30 +158,8 @@ export class AiService {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) {
-            continue;
-          }
-
-          const data = trimmed.slice(6);
-          if (data === '[DONE]') {
-            if (fullText.length === 0) {
-              callback.onError(new AiError('AI 返回了空内容', 'EMPTY_RESPONSE'));
-            } else {
-              callback.onComplete(fullText);
-            }
+          if (handleLine(line)) {
             return;
-          }
-
-          try {
-            const parsed = JSON.parse(data);
-            const token = parsed.choices?.[0]?.delta?.content || '';
-            if (token) {
-              fullText += token;
-              callback.onToken(token);
-            }
-          } catch {
-            // skip malformed JSON lines
           }
         }
       }
@@ -137,10 +167,18 @@ export class AiService {
       reader.releaseLock();
     }
 
-    if (fullText.length === 0) {
-      callback.onError(new AiError('AI 返回了空内容', 'EMPTY_RESPONSE'));
-    } else {
-      callback.onComplete(fullText);
+    // 某些代理在最后一条 SSE 后不发送额外的换行，不能丢弃尾部事件。
+    if (buffer && !callbackSent) {
+      handleLine(buffer);
+    }
+
+    if (!callbackSent) {
+      callbackSent = true;
+      if (fullText.length === 0) {
+        callback.onError(new AiError('AI 返回了空内容', 'EMPTY_RESPONSE'));
+      } else {
+        callback.onComplete(fullText);
+      }
     }
   }
 

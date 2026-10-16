@@ -77,9 +77,9 @@ export class GenerateService {
 
         for (const line of lines) {
           const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          if (!trimmed || !trimmed.startsWith('data:')) continue;
 
-          const data = trimmed.slice(6);
+          const data = trimmed.slice(5).trimStart();
           if (data === '[DONE]') {
             const quota = await this.keyService.getQuota(key, machineId);
             res.write(`data: ${JSON.stringify({ done: true, remaining: quota.remaining })}\n\n`);
@@ -89,6 +89,17 @@ export class GenerateService {
 
           try {
             const parsed = JSON.parse(data);
+            if (parsed.error) {
+              // 某些 OpenAI 兼容网关会在 HTTP 200 的 SSE 中返回错误对象。
+              // 必须透传给扩展，否则扩展会把它误判成空响应。
+              const message =
+                typeof parsed.error === 'string'
+                  ? parsed.error
+                  : parsed.error.message || 'AI service returned an error';
+              res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+              res.end();
+              return;
+            }
             const token = parsed.choices?.[0]?.delta?.content || '';
             if (token) {
               res.write(`data: ${JSON.stringify({ token })}\n\n`);
@@ -96,6 +107,33 @@ export class GenerateService {
             }
           } catch {
             // skip malformed JSON
+          }
+        }
+      }
+
+      // 兼容最后一条 SSE 没有换行的代理实现。
+      const trailingLine = buffer.trim();
+      if (trailingLine.startsWith('data:')) {
+        const data = trailingLine.slice(5).trimStart();
+        if (data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) {
+              const message =
+                typeof parsed.error === 'string'
+                  ? parsed.error
+                  : parsed.error.message || 'AI service returned an error';
+              res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+              res.end();
+              return;
+            }
+            const token = parsed.choices?.[0]?.delta?.content || '';
+            if (token) {
+              res.write(`data: ${JSON.stringify({ token })}\n\n`);
+              if (typeof (res as any).flush === 'function') (res as any).flush();
+            }
+          } catch {
+            // 忽略无法解析的尾部事件，后续由空响应检查处理。
           }
         }
       }
