@@ -23,6 +23,88 @@
 1. 在 VS Code 扩展商店搜索 **YouCommit** 安装
 2. 或下载 `.vsix` 文件，通过命令面板 `Extensions: Install from VSIX...` 安装
 
+### 发布新版插件（维护者）
+
+每次发布都要先更新版本号，再构建和验证 VSIX，最后发布到插件市场。以下命令在项目根目录的 PowerShell 中执行。
+
+#### 1. 更新版本信息
+
+1. 修改 `package.json` 中的 `version`，例如从 `0.2.12` 改为 `0.2.13`。版本号必须递增，且不能重复发布已经存在的版本。
+2. 在 `CHANGELOG.md` 添加本版本的变更说明。
+3. 完成功能检查，并确认没有把 API Key、服务密钥或 `.env` 文件加入提交。
+
+#### 2. 构建并生成 VSIX
+
+```powershell
+yarn install --frozen-lockfile
+yarn ext:package
+npx vsce package
+```
+
+说明：
+
+- `yarn ext:package` 生成生产版 `dist/extension.js`。
+- `npx vsce package` 收集 `dist/`、`resources/`、README 和 LICENSE，生成 `you-commit-0.2.13.vsix`。文件名中的版本号以 `package.json` 为准。
+- 检查 VSIX 内容时可执行：
+
+```powershell
+npx vsce ls
+```
+
+#### 3. 本地安装验证
+
+先在本机安装刚生成的包，确认插件可以激活、配置模型、读取暂存区 diff 并生成 Commit Message：
+
+```powershell
+code --install-extension .\you-commit-0.2.13.vsix --force
+```
+
+安装后在 VS Code 执行 `Developer: Reload Window`，再打开一个 Git 仓库进行验证。确认无误后再发布到线上。
+
+#### 4. 发布到 VS Code Marketplace
+
+首次发布或本机尚未保存 publisher 凭据时，使用具有 Marketplace 发布权限（Manage）的 Microsoft Personal Access Token 登录：
+
+```powershell
+npx vsce login tardis9527
+```
+
+随后发布当前版本：
+
+```powershell
+npx vsce publish
+```
+
+也可以明确发布已经生成的 VSIX：
+
+```powershell
+npx vsce publish --packagePath .\you-commit-0.2.13.vsix
+```
+
+项目中的 `yarn ext:publish` 等价于执行 `vsce publish`，但发布前仍建议先完成上面的构建和本地验证。
+
+#### 5. 发布到 Open VSX（可选）
+
+使用 Open VSX Personal Access Token，通过环境变量传入，避免把令牌写入命令历史或仓库：
+
+```powershell
+$env:OVSX_PAT = "your-open-vsx-token"
+npx ovsx publish .\you-commit-0.2.13.vsix -p $env:OVSX_PAT
+```
+
+#### 6. 提交版本并创建标签
+
+确认两个市场都发布成功后，再提交版本记录并推送标签：
+
+```powershell
+git add package.json CHANGELOG.md README.md
+git commit -m "chore: release v0.2.13"
+git tag v0.2.13
+git push origin main --tags
+```
+
+将示例中的 `0.2.13` 替换为本次实际版本。Marketplace、Open VSX 的令牌只保存在本机或 CI 的密钥配置中，不要写入 `.env`、README 或 Git 历史。
+
 ### 配置
 
 首次安装后会自动弹出配置向导，也可以手动执行：
